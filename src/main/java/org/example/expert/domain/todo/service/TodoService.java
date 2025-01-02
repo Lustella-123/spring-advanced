@@ -39,6 +39,27 @@ public class TodoService {
         );
         Todo savedTodo = todoRepository.save(newTodo);
 
+        return getTodoSaveResponse(savedTodo, weather, user);
+    }
+
+    public Page<TodoResponse> getTodos(int page, int size) {
+        Pageable pageable = PageRequest.of(page - 1, size);
+
+        Page<Todo> todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
+
+        return todos.map(todo -> getTodoResponse(todo, todo.getUser()));
+    }
+
+    public TodoResponse getTodo(long todoId) {
+        Todo todo = todoRepository.findById(todoId)
+                .orElseThrow(() -> new InvalidRequestException("Todo not found"));
+
+        User user = todo.getUser();
+
+        return getTodoResponse(todo, user);
+    }
+
+    private static TodoSaveResponse getTodoSaveResponse(Todo savedTodo, String weather, User user) {
         return new TodoSaveResponse(
                 savedTodo.getId(),
                 savedTodo.getTitle(),
@@ -48,28 +69,7 @@ public class TodoService {
         );
     }
 
-    public Page<TodoResponse> getTodos(int page, int size) {
-        Pageable pageable = PageRequest.of(page - 1, size);
-
-        Page<Todo> todos = todoRepository.findAllByOrderByModifiedAtDesc(pageable);
-
-        return todos.map(todo -> new TodoResponse(
-                todo.getId(),
-                todo.getTitle(),
-                todo.getContents(),
-                todo.getWeather(),
-                new UserResponse(todo.getUser().getId(), todo.getUser().getEmail()),
-                todo.getCreatedAt(),
-                todo.getModifiedAt()
-        ));
-    }
-
-    public TodoResponse getTodo(long todoId) {
-        Todo todo = todoRepository.findById(todoId)
-                .orElseThrow(() -> new InvalidRequestException("Todo not found"));
-
-        User user = todo.getUser();
-
+    private static TodoResponse getTodoResponse(Todo todo, User user) {
         return new TodoResponse(
                 todo.getId(),
                 todo.getTitle(),

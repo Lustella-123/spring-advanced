@@ -8,37 +8,55 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.HashMap;
-import java.util.Map;
-
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(InvalidRequestException.class)
-    public ResponseEntity<Map<String, Object>> invalidRequestExceptionException(InvalidRequestException ex) {
-        HttpStatus status = HttpStatus.BAD_REQUEST;
-        return getErrorResponse(status, ex.getMessage());
+    public ResponseEntity<ErrorResponse> handleInvalidRequestException(InvalidRequestException ex) {
+        return getErrorResponse(HttpStatus.BAD_REQUEST, ex);
     }
 
     @ExceptionHandler(AuthException.class)
-    public ResponseEntity<Map<String, Object>> handleAuthException(AuthException ex) {
-        HttpStatus status = HttpStatus.UNAUTHORIZED;
-        return getErrorResponse(status, ex.getMessage());
+    public ResponseEntity<ErrorResponse> handleAuthException(AuthException ex) {
+        return getErrorResponse(HttpStatus.UNAUTHORIZED, ex);
     }
 
     @ExceptionHandler(ServerException.class)
-    public ResponseEntity<Map<String, Object>> handleServerException(ServerException ex) {
-        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
-        return getErrorResponse(status, ex.getMessage());
+    public ResponseEntity<ErrorResponse> handleServerException(ServerException ex) {
+        return getErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex);
     }
 
-    public ResponseEntity<Map<String, Object>> getErrorResponse(HttpStatus status, String message) {
-        Map<String, Object> errorResponse = new HashMap<>();
-        errorResponse.put("status", status.name());
-        errorResponse.put("code", status.value());
-        errorResponse.put("message", message);
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGlobalException(Exception ex) {
+        return getErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, ex);
+    }
 
+    private ResponseEntity<ErrorResponse> getErrorResponse(HttpStatus status, Exception ex) {
+        ErrorResponse errorResponse = new ErrorResponse(status.name(), ex.getClass().getSimpleName(), ex.getMessage());
         return new ResponseEntity<>(errorResponse, status);
     }
-}
 
+    public static class ErrorResponse {
+        private final String status;
+        private final String exception;
+        private final String message;
+
+        public ErrorResponse(String status, String exception, String message) {
+            this.status = status;
+            this.exception = exception;
+            this.message = message;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public String getException() {
+            return exception;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+    }
+}

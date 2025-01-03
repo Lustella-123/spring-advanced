@@ -27,9 +27,7 @@ public class AuthService {
     @Transactional
     public SignupResponse signup(SignupRequest signupRequest) {
 
-        if (userRepository.existsByEmail(signupRequest.getEmail())) {
-            throw new InvalidRequestException("이미 존재하는 이메일입니다.");
-        }
+        isValidEmail(signupRequest);
 
         String encodedPassword = passwordEncoder.encode(signupRequest.getPassword());
 
@@ -47,16 +45,28 @@ public class AuthService {
         return new SignupResponse(bearerToken);
     }
 
+    //이메일 검증 메서드 추출
+    private void isValidEmail(SignupRequest signupRequest) {
+        if (userRepository.existsByEmail(signupRequest.getEmail())) {
+            throw new InvalidRequestException("이미 존재하는 이메일입니다.");
+        }
+    }
+
     public SigninResponse signin(SigninRequest signinRequest) {
         User user = userRepository.findByEmail(signinRequest.getEmail()).orElseThrow(
                 () -> new InvalidRequestException("가입되지 않은 유저입니다."));
 
-        if (!passwordEncoder.matches(signinRequest.getPassword(), user.getPassword())) {
-            throw new AuthException("잘못된 비밀번호입니다.");
-        }
+        isValidPassword(signinRequest, user);
 
         String bearerToken = jwtUtil.createToken(user.getId(), user.getEmail(), user.getUserRole());
 
         return new SigninResponse(bearerToken);
+    }
+
+    //비밀번호 검증 메서드 추출
+    private void isValidPassword(SigninRequest signinRequest, User user) {
+        if (!passwordEncoder.matches(signinRequest.getPassword(), user.getPassword())) {
+            throw new AuthException("잘못된 비밀번호입니다.");
+        }
     }
 }

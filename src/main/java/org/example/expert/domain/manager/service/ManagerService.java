@@ -1,7 +1,5 @@
 package org.example.expert.domain.manager.service;
 
-import java.util.ArrayList;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.example.expert.domain.common.dto.AuthUser;
 import org.example.expert.domain.common.exception.InvalidRequestException;
@@ -19,6 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -33,31 +34,18 @@ public class ManagerService {
         User user = User.fromAuthUser(authUser);
         Todo todo = todoRepository.findById(todoId)
                 .orElseThrow(() -> new InvalidRequestException("Todo not found"));
+        todo.validateUserOwnership(user);
 
-        User managerUser = validateAndRetrieveManager(managerSaveRequest, user, todo);
+        User managerUser = userRepository.findById(managerSaveRequest.getManagerUserId())
+                .orElseThrow(() -> new InvalidRequestException("등록하려고 하는 담당자 유저가 존재하지 않습니다."));
+        user.validUserManager(user, managerUser);
 
-        Manager newManagerUser = new Manager(managerUser, todo);
-        Manager savedManagerUser = managerRepository.save(newManagerUser);
+        Manager savedManagerUser = managerRepository.save(new Manager(managerUser, todo));
 
         return new ManagerSaveResponse(
                 savedManagerUser.getId(),
                 new UserResponse(managerUser.getId(), managerUser.getEmail())
         );
-    }
-
-    //User valid check
-    private User validateAndRetrieveManager(ManagerSaveRequest managerSaveRequest, User user, Todo todo) {
-        if (!ObjectUtils.nullSafeEquals(user.getId(), todo.getUser().getId())) {
-            throw new InvalidRequestException("담당자를 등록하려고 하는 유저가 일정을 만든 유저가 유효하지 않습니다.");
-        }
-
-        User managerUser = userRepository.findById(managerSaveRequest.getManagerUserId())
-                .orElseThrow(() -> new InvalidRequestException("등록하려고 하는 담당자 유저가 존재하지 않습니다."));
-
-        if (ObjectUtils.nullSafeEquals(user.getId(), managerUser.getId())) {
-            throw new InvalidRequestException("일정 작성자는 본인을 담당자로 등록할 수 없습니다.");
-        }
-        return managerUser;
     }
 
     public List<ManagerResponse> getManagers(long todoId) {
@@ -84,24 +72,12 @@ public class ManagerService {
 
         Todo todo = todoRepository.findById(todoId)
                 .orElseThrow(() -> new InvalidRequestException("Todo not found"));
-
-        Manager manager = validManager(managerId, todo, user);
-
-        managerRepository.delete(manager);
-    }
-
-    //Manager valid check
-    private Manager validManager(long managerId, Todo todo, User user) {
-        if (todo.getUser() == null || !ObjectUtils.nullSafeEquals(user.getId(), todo.getUser().getId())) {
-            throw new InvalidRequestException("해당 일정을 만든 유저가 유효하지 않습니다.");
-        }
+        todo.validateUserOwnership(user);
 
         Manager manager = managerRepository.findById(managerId)
                 .orElseThrow(() -> new InvalidRequestException("Manager not found"));
+        manager.validTodoManager(todo);
 
-        if (!ObjectUtils.nullSafeEquals(todo.getId(), manager.getTodo().getId())) {
-            throw new InvalidRequestException("해당 일정에 등록된 담당자가 아닙니다.");
-        }
-        return manager;
+        managerRepository.delete(manager);
     }
 }

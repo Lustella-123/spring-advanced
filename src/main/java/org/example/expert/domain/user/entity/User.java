@@ -5,7 +5,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.example.expert.domain.common.dto.AuthUser;
 import org.example.expert.domain.common.entity.Timestamped;
+import org.example.expert.domain.common.exception.InvalidRequestException;
 import org.example.expert.domain.user.enums.UserRole;
+import org.springframework.util.ObjectUtils;
 
 @Getter
 @Entity
@@ -43,5 +45,10 @@ public class User extends Timestamped {
 
     public void updateRole(UserRole userRole) {
         this.userRole = userRole;
+    }
+
+    public void validUserManager(User user, User managerUser) {
+        if (!ObjectUtils.nullSafeEquals(user, managerUser))
+            throw new InvalidRequestException("일정 작성자는 본인을 담당자로 등록할 수 없습니다.");
     }
 }
